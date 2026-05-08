@@ -1,26 +1,25 @@
 import jwt from "jsonwebtoken";
-import { configenv } from "../configs/configenv";
+import { configenv } from "../configs/configenv.js";
 
 export const authMiddleware = async (req, res, next) => {
-  try {
-    const authorization = req.headers.authorization;
+	try {
+		const authorization = req.headers.authorization;
 
-    if (!authorization) {
-      return res.status(401).json({
-        message: "Unauthorized",
-      });
-    }
+		if (!authorization) {
+			return res.status(401).json({
+				message: "Unauthorized",
+			});
+		}
 
-    const token = authorization.replace("Bearer ", "");
+		const token = authorization.replace("Bearer ", "");
 
-    const decoded = jwt.verify(token, configenv.JWT_SECRET);
+		const decoded = jwt.verify(token, configenv.JWT_SECRET);
+		req.user = decoded;
 
-    req.user = decoded;
-
-    next();
-  } catch (error) {
-    return res.status(401).json({
-      message: "Invalid token",
-    });
-  }
+		next();
+	} catch (error) {
+		return res.status(401).json({
+			message: "Invalid token",
+		});
+	}
 };

@@ -5,7 +5,7 @@ import { configenv } from "../../common/configs/configenv.js";
 import { User } from "../users/user.model.js";
 
 export const registerAuth = handleAsync(async (req, res) => {
-  const { email, password, name } = req.body;
+  const { email, password, fullName, branch, phone } = req.body;
   const existUser = await User.findOne({ email });
   if (existUser) {
     return res.status(400).json({
@@ -15,7 +15,7 @@ export const registerAuth = handleAsync(async (req, res) => {
     });
   }
 
-  const newUser = await User.create({ email, password: password, name });
+  const newUser = await User.create({ email, password, fullName, branch, phone });
   newUser.password = undefined;
   res.status(201).json({
     success: true,
