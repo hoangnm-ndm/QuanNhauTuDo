@@ -1,24 +1,10 @@
-/**
- * basic: register, login, forgot password, reset password, verify email, resend verification email,
- *
- * advance: manage user profile, manage user roles and permissions, logout, refresh token, social login, account deletion, and more...
- */
-
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import handleAsync from "../../common/utils/handleAsync.js";
-import { User } from "../user/user.model.js";
 import { configenv } from "../../common/configs/configenv.js";
+import { User } from "../users/user.model.js";
 
 export const registerAuth = handleAsync(async (req, res) => {
-  /**
-   * 1. Kiểm tra dữ liệu đầu vào (validation) - done
-   * 2. Kiểm tra xem email đã tồn tại chưa (unique)
-   * 3. Hash password trước khi lưu vào database
-   * 4. Lưu thông tin người dùng vào database
-   * 5. Trả về response thành công hoặc lỗi
-   */
-
   const { email, password, name } = req.body;
   const existUser = await User.findOne({ email });
   if (existUser) {
@@ -29,11 +15,8 @@ export const registerAuth = handleAsync(async (req, res) => {
     });
   }
 
-  const hashPassword = await bcrypt.hash(password, 10);
-
-  const newUser = await User.create({ email, password: hashPassword, name });
-  newUser.password = undefined; // Ẩn trường password khi trả về response
-
+  const newUser = await User.create({ email, password: password, name });
+  newUser.password = undefined;
   res.status(201).json({
     success: true,
     statusCode: 201,
@@ -47,16 +30,6 @@ export const loginAuth = handleAsync(async (req, res) => {
   const existUser = await User.findOne({ email });
 
   if (!existUser) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: "Email hoặc mật khẩu không đúng",
-    });
-  }
-
-  const isPasswordValid = await bcrypt.compare(password, existUser.password);
-
-  if (!isPasswordValid) {
     return res.status(400).json({
       success: false,
       statusCode: 400,
@@ -80,7 +53,7 @@ export const loginAuth = handleAsync(async (req, res) => {
     }
   );
 
-  existUser.password = undefined; // Ẩn trường password khi trả về response
+  existUser.password = undefined;
 
   res.status(200).json({
     success: true,
