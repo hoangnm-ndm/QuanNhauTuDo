@@ -27,18 +27,36 @@ export const registerAuth = handleAsync(async (req, res) => {
 
 export const loginAuth = handleAsync(async (req, res) => {
   const { email, password } = req.body;
-  const existUser = await User.findOne({ email });
 
-  if (!existUser) {
+  const user = await User.findOne({
+    email,
+    isActive: true,
+  }).select("+password");
+
+  if (!user) {
     return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: "Email hoặc mật khẩu không đúng",
+      message: "Invalid credentials",
     });
   }
 
+  const isMatch = await user.comparePassword(password);
+
+  if (!isMatch) {
+    return res.status(400).json({
+      message: "Invalid credentials",
+    });
+  }
+
+  user.lastLoginAt = new Date();
+
+  await user.save();
+
   const accessToken = jwt.sign(
-    { userId: existUser._id },
+    {
+      id: user._id,
+      role: user.role,
+      branch: user.branch,
+    },
     configenv.JWT_SECRET,
     {
       expiresIn: "1h",
@@ -46,22 +64,20 @@ export const loginAuth = handleAsync(async (req, res) => {
   );
 
   const refreshToken = jwt.sign(
-    { userId: existUser._id },
+    { userId: user._id },
     configenv.JWT_REFRESH_SECRET,
     {
       expiresIn: "15d",
     }
   );
 
-  existUser.password = undefined;
+  user.password = undefined;
 
   res.status(200).json({
     success: true,
     statusCode: 200,
     message: "Đăng nhập thành công",
-    data: existUser,
-    accessToken,
-    refreshToken,
+    data: { user, accessToken, refreshToken },
   });
 });
 
