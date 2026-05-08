@@ -1,25 +1,11 @@
-/**
- * basic: register, login, forgot password, reset password, verify email, resend verification email,
- *
- * advance: manage user profile, manage user roles and permissions, logout, refresh token, social login, account deletion, and more...
- */
-
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import handleAsync from "../../common/utils/handleAsync.js";
-import { User } from "../user/user.model.js";
 import { configenv } from "../../common/configs/configenv.js";
+import { User } from "../users/user.model.js";
 
 export const registerAuth = handleAsync(async (req, res) => {
-  /**
-   * 1. Kiểm tra dữ liệu đầu vào (validation) - done
-   * 2. Kiểm tra xem email đã tồn tại chưa (unique)
-   * 3. Hash password trước khi lưu vào database
-   * 4. Lưu thông tin người dùng vào database
-   * 5. Trả về response thành công hoặc lỗi
-   */
-
-  const { email, password, name } = req.body;
+  const { email, password, fullName, branch, phone } = req.body;
   const existUser = await User.findOne({ email });
   if (existUser) {
     return res.status(400).json({
@@ -29,11 +15,8 @@ export const registerAuth = handleAsync(async (req, res) => {
     });
   }
 
-  const hashPassword = await bcrypt.hash(password, 10);
-
-  const newUser = await User.create({ email, password: hashPassword, name });
-  newUser.password = undefined; // Ẩn trường password khi trả về response
-
+  const newUser = await User.create({ email, password, fullName, branch, phone });
+  newUser.password = undefined;
   res.status(201).json({
     success: true,
     statusCode: 201,
@@ -44,28 +27,36 @@ export const registerAuth = handleAsync(async (req, res) => {
 
 export const loginAuth = handleAsync(async (req, res) => {
   const { email, password } = req.body;
-  const existUser = await User.findOne({ email });
 
-  if (!existUser) {
+  const user = await User.findOne({
+    email,
+    isActive: true,
+  }).select("+password");
+
+  if (!user) {
     return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: "Email hoặc mật khẩu không đúng",
+      message: "Invalid credentials",
     });
   }
 
-  const isPasswordValid = await bcrypt.compare(password, existUser.password);
+  const isMatch = await user.comparePassword(password);
 
-  if (!isPasswordValid) {
+  if (!isMatch) {
     return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: "Email hoặc mật khẩu không đúng",
+      message: "Invalid credentials",
     });
   }
+
+  user.lastLoginAt = new Date();
+
+  await user.save();
 
   const accessToken = jwt.sign(
-    { userId: existUser._id },
+    {
+      id: user._id,
+      role: user.role,
+      branch: user.branch,
+    },
     configenv.JWT_SECRET,
     {
       expiresIn: "1h",
@@ -73,22 +64,20 @@ export const loginAuth = handleAsync(async (req, res) => {
   );
 
   const refreshToken = jwt.sign(
-    { userId: existUser._id },
+    { userId: user._id },
     configenv.JWT_REFRESH_SECRET,
     {
       expiresIn: "15d",
     }
   );
 
-  existUser.password = undefined; // Ẩn trường password khi trả về response
+  user.password = undefined;
 
   res.status(200).json({
     success: true,
     statusCode: 200,
     message: "Đăng nhập thành công",
-    data: existUser,
-    accessToken,
-    refreshToken,
+    data: { user, accessToken, refreshToken },
   });
 });
 
