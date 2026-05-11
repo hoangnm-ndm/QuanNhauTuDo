@@ -15,7 +15,13 @@ export const registerAuth = handleAsync(async (req, res) => {
     });
   }
 
-  const newUser = await User.create({ email, password, fullName, branch, phone });
+  const newUser = await User.create({
+    email,
+    password,
+    fullName,
+    branch,
+    phone,
+  });
   newUser.password = undefined;
   res.status(201).json({
     success: true,
@@ -73,12 +79,18 @@ export const loginAuth = handleAsync(async (req, res) => {
 
   user.password = undefined;
 
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: false, // Set to true if using HTTPS
+    maxAge: 15 * 24 * 60 * 60 * 1000,
+    path: "/",
+    sameSite: "strict",
+  });
+
   res.status(200).json({
     success: true,
     statusCode: 200,
     message: "Đăng nhập thành công",
-    data: { user, accessToken, refreshToken },
+    data: { accessToken, user },
   });
 });
-
-// refreshToken...
