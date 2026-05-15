@@ -39,12 +39,10 @@ const branchSchema = new mongoose.Schema(
 
     openTime: {
       type: String,
-      required: false,
     },
 
     closeTime: {
       type: String,
-      required: false,
     },
 
     isActive: {
